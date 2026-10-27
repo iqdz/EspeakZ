@@ -2,7 +2,9 @@
 <!-- One voice parameter: its name, its current value, the slider and the
      controls that go with it. Inflated once per parameter by
      SeekBarPreference. Every height is wrap_content: the sections live in a
-     ScrollView, so weights would collapse them to nothing. -->
+     ScrollView, so weights would collapse them to nothing. The name and the
+     value are hidden from screen readers because the slider announces both,
+     such as "Speech rate, 175 WPM". -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -12,12 +14,14 @@
 
     <TextView
         android:id="@+id/parameterTitle"
+        android:importantForAccessibility="no"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceMedium" />
 
     <TextView
         android:id="@+id/valueText"
+        android:importantForAccessibility="no"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"

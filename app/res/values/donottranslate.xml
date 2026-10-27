@@ -4,7 +4,7 @@
         Source: App icon label.
         Description: The name of the application.
     -->
-  <string name="app_name" translatable="false">eSpeak</string>
+  <string name="app_name" translatable="false">EspeakZ</string>
 
   <!-- Voice Variants that are people's names. -->
   <string name="variant_klatt">Klatt</string>
@@ -17,7 +17,7 @@
   <string name="variant_anika">Anika</string>
   <string name="variant_anika_robot">Anika Robot</string>
   <string name="variant_annie">Annie</string>
-  <string name="variant_anouncer">Anouncer</string>
+  <string name="variant_anouncer">Announcer</string>
   <string name="variant_antonio">Antonio</string>
   <string name="variant_anxious_andy">Anxious Andy</string>
   <string name="variant_aunty">Aunty</string>

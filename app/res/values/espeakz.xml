@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings EspeakZ adds to the eSpeak NG app. -->
+<resources>
+  <string name="voice_languages_title">Voice languages</string>
+  <string name="voice_languages_summary">Installed: %s</string>
+  <string name="voice_languages_installing">Installing voice languages…</string>
+  <string name="voice_languages_updated">Voice languages updated</string>
+  <string name="voice_languages_failed">Some voice languages could not be installed</string>
+  <string name="import_voice_summary">Import an eSpeak dictionary file, named like xx_dict.</string>
+  <string name="import_voice_no_picker">This device has no file picker to choose a dictionary with.</string>
+  <string name="import_voice_done">Imported %s</string>
+  <string name="import_voice_failed">Could not import %s. Choose an eSpeak dictionary file whose name ends in _dict.</string>
+  <string name="dual_title">Dual languages</string>
+  <string name="dual_off">Off</string>
+  <string name="dual_needs_voice">On, but no language is in use</string>
+  <string name="dual_summary">Latin: %1$s. Non-Latin: %2$s</string>
+  <string name="dual_enabled_title">Use dual language voices, Latin and non-Latin</string>
+  <string name="dual_voice_title">Voice</string>
+  <string name="dual_voice_choose">Choose a voice</string>
+  <string name="dual_voice_loading">Loading voices…</string>
+  <string name="dual_voice_none">No installed voice speaks this language</string>
+  <string name="dual_voice_online">%s, needs internet</string>
+  <string name="dual_voice_by">%1$s by %2$s</string>
+  <string name="dual_numbers_title">Numbers and punctuation</string>
+  <string name="dual_emojis_title">Emojis</string>
+  <string name="espeakz_language_title">EspeakZ language</string>
+  <string name="espeakz_language_device">Device language, %s</string>
+  <string name="espeakz_language_force_title">Use EspeakZ language in all apps</string>
+  <string name="espeakz_language_force_summary">Apps and Android cannot change it</string>
+  <string name="long_numbers_title">Numbers longer than 6 digits</string>
+  <string-array name="long_numbers_entries">
+    <item>Do not process</item>
+    <item>One digit at a time</item>
+    <item>Two digits at a time</item>
+    <item>Three digits at a time</item>
+  </string-array>
+  <string name="dual_language_choose">Choose a language</string>
+  <string name="dual_language_loading">Looking for voices on this device…</string>
+  <string name="dual_voice_language_first">Choose the language first</string>
+  <string name="dual_voice_settings">Voice settings</string>
+  <string name="dual_back">Back</string>
+  <string name="keep_running_title">Keep EspeakZ running</string>
+  <string name="keep_running_on">On: battery saving leaves EspeakZ alone</string>
+  <string name="keep_running_off">Off: Android may stop EspeakZ to save battery</string>
+  <string name="keep_running_unavailable">This device has no battery setting for apps.</string>
+  <string name="dual_language_not_chosen">not chosen</string>
+  <string name="dual_test">Test voice</string>
+  <string name="dual_language">Language</string>
+  <string name="dual_language_entry">%1$s, %2$s</string>
+  <string name="dual_and">" and "</string>
+  <string name="dual_language_summary">%1$s. In use: %2$s</string>
+  <string name="dual_latin_voice">Latin language voice</string>
+  <string name="dual_non_latin_voice">Non-Latin language voice</string>
+  <string name="github_title">EspeakZ on GitHub</string>
+  <string name="github_summary">The source code, the changes and new versions</string>
+  <string name="github_no_browser">This device has no web browser to open github.com/iqdz/EspeakZ with.</string>
+</resources>

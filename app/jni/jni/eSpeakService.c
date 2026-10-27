@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2026 Harith Alhamdani
  * Copyright (C) 2012-2017 Reece H. Dunn
  * Copyright (C) 2011 Google Inc.
  *
@@ -16,7 +17,7 @@
  */
 
 /*
- * This file contains the JNI bindings to eSpeak used by SpeechSynthesis.java.
+ * This file contains the JNI bindings to eSpeak used by SpeechSynthesis.kt.
  *
  * Android Version: 4.0 (Ice Cream Sandwich)
  * API Version:     14
@@ -28,12 +29,16 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <string.h>
+#include <math.h>
 #include <jni.h>
 
 #include <espeak-ng/speak_lib.h>
 #include <Log.h>
 
-#define BUFFER_SIZE_IN_MILLISECONDS 300
+/* How much audio eSpeak makes before handing it over. The first piece of an
+ * utterance waits for a whole buffer, so this is the speech a screen reader
+ * waits for: 300 ms cost a watch about 40 ms per request before any sound. */
+#define BUFFER_SIZE_IN_MILLISECONDS 60
 
 /* These are helpers for converting a jstring to wchar_t*.
  *
@@ -112,6 +117,59 @@ static int frames_delivered = 0;
  * synthesized, which is silence for as long as the text the user just left. */
 static atomic_int stop_requested;
 
+/* A gentle low-shelf filter on everything eSpeak produces, so the voice
+ * sounds a little fuller: frequencies below BASS_SHELF_HZ are lifted by
+ * BASS_GAIN_DB, the rest is left as it is. It is the RBJ Audio EQ Cookbook
+ * low shelf with a shelf slope of 1. Samples that the boost would push past
+ * the 16-bit range are clipped to it. The state is reset per request, so one
+ * utterance never colours the start of the next. Only nativeSynthesize runs
+ * it, and the Kotlin side serialises those calls. */
+#define BASS_SHELF_HZ 220.0
+#define BASS_GAIN_DB 8.0
+
+static struct {
+  float b0, b1, b2, a1, a2;
+  float x1, x2, y1, y2;
+  int enabled;
+} bass;
+
+static void bass_init(int sample_rate) {
+  if (sample_rate <= 0) {
+    bass.enabled = 0;
+    return;
+  }
+  const double a = pow(10.0, BASS_GAIN_DB / 40.0);
+  const double w0 = 2.0 * M_PI * BASS_SHELF_HZ / sample_rate;
+  const double cos_w0 = cos(w0);
+  const double alpha = sin(w0) / 2.0 * sqrt(2.0);
+  const double sqrt_a_alpha = 2.0 * sqrt(a) * alpha;
+  const double a0 = (a + 1) + (a - 1) * cos_w0 + sqrt_a_alpha;
+  bass.b0 = (float)(a * ((a + 1) - (a - 1) * cos_w0 + sqrt_a_alpha) / a0);
+  bass.b1 = (float)(2 * a * ((a - 1) - (a + 1) * cos_w0) / a0);
+  bass.b2 = (float)(a * ((a + 1) - (a - 1) * cos_w0 - sqrt_a_alpha) / a0);
+  bass.a1 = (float)(-2 * ((a - 1) + (a + 1) * cos_w0) / a0);
+  bass.a2 = (float)(((a + 1) + (a - 1) * cos_w0 - sqrt_a_alpha) / a0);
+  bass.enabled = 1;
+}
+
+static void bass_reset(void) {
+  bass.x1 = bass.x2 = bass.y1 = bass.y2 = 0;
+}
+
+static void bass_process(short *samples, int count) {
+  if (!bass.enabled) return;
+  for (int i = 0; i < count; i++) {
+    const float x = samples[i];
+    const float y = bass.b0 * x + bass.b1 * bass.x1 + bass.b2 * bass.x2
+                  - bass.a1 * bass.y1 - bass.a2 * bass.y2;
+    bass.x2 = bass.x1;
+    bass.x1 = x;
+    bass.y2 = bass.y1;
+    bass.y1 = y;
+    samples[i] = (short)(y > 32767.0f ? 32767 : (y < -32768.0f ? -32768 : y));
+  }
+}
+
 static JNIEnv *getJniEnv() {
   JNIEnv *env = NULL;
   (*jvm)->AttachCurrentThread(jvm, &env, NULL);
@@ -156,6 +214,7 @@ static int SynthCallback(short *audioData, int numSamples,
   }
 
   if (numSamples > 0) {
+    bass_process(audioData, numSamples);
     jbyteArray arrayAudioData = (*env)->NewByteArray(env, numSamples * 2);
     (*env)->SetByteArrayRegion(env, arrayAudioData, 0, (numSamples * 2), (jbyte *) audioData);
     (*env)->CallVoidMethod(env, object, METHOD_nativeSynthCallback, arrayAudioData);
@@ -186,7 +245,7 @@ JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 }
 
 JNIEXPORT jboolean
-JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeClassInit(
+JNICALL Java_com_espeakz_app_SpeechSynthesis_nativeClassInit(
     JNIEnv* env, jclass clazz) {
   if (DEBUG) LOGV("%s", __FUNCTION__);
   METHOD_nativeSynthCallback = (*env)->GetMethodID(env, clazz, "nativeSynthCallback", "([B)V");
@@ -196,7 +255,7 @@ JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeClassInit(
 }
 
 JNIEXPORT jint
-JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeCreate(
+JNICALL Java_com_espeakz_app_SpeechSynthesis_nativeCreate(
     JNIEnv *env, jobject object, jstring path) {
   if (DEBUG) LOGV("%s [env=%p, object=%p]", __FUNCTION__, env, object);
 
@@ -204,6 +263,7 @@ JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeCreate(
 
   if (DEBUG) LOGV("Initializing with path %s", c_path);
   int sampleRate = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, BUFFER_SIZE_IN_MILLISECONDS, c_path, 0);
+  bass_init(sampleRate);
 
   if (c_path) (*env)->ReleaseStringUTFChars(env, path, c_path);
 
@@ -211,14 +271,14 @@ JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeCreate(
 }
 
 JNIEXPORT jobject
-JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeGetVersion(
+JNICALL Java_com_espeakz_app_SpeechSynthesis_nativeGetVersion(
     JNIEnv *env, jclass clazz) {
   if (DEBUG) LOGV("%s", __FUNCTION__);
   return (*env)->NewStringUTF(env, espeak_Info(NULL));
 }
 
 JNIEXPORT jobjectArray
-JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeGetAvailableVoices(
+JNICALL Java_com_espeakz_app_SpeechSynthesis_nativeGetAvailableVoices(
     JNIEnv *env, jobject object) {
   if (DEBUG) LOGV("%s", __FUNCTION__);
 
@@ -262,7 +322,7 @@ JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeGetAvailableVoices(
 }
 
 JNIEXPORT jboolean
-JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeSetVoiceByName(
+JNICALL Java_com_espeakz_app_SpeechSynthesis_nativeSetVoiceByName(
     JNIEnv *env, jobject object, jstring name) {
   const char *c_name = name ? (*env)->GetStringUTFChars(env, name, NULL) : NULL;
 
@@ -283,7 +343,7 @@ JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeSetVoiceByName(
 }
 
 JNIEXPORT jboolean
-JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeSetVoiceByProperties(
+JNICALL Java_com_espeakz_app_SpeechSynthesis_nativeSetVoiceByProperties(
     JNIEnv *env, jobject object, jstring language, jint gender, jint age) {
   const char *c_language = language ? (*env)->GetStringUTFChars(env, language, NULL) : NULL;
 
@@ -310,7 +370,7 @@ JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeSetVoiceByProperties(
 }
 
 JNIEXPORT jboolean
-JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeSetParameter(
+JNICALL Java_com_espeakz_app_SpeechSynthesis_nativeSetParameter(
     JNIEnv *env, jobject object, jint parameter, jint value) {
   if (DEBUG) LOGV("%s(parameter=%d, value=%d)", __FUNCTION__, parameter, value);
   const espeak_ERROR result = espeak_SetParameter((espeak_PARAMETER)parameter, (int)value, 0);
@@ -326,14 +386,14 @@ JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeSetParameter(
 }
 
 JNIEXPORT jint
-JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeGetParameter(
+JNICALL Java_com_espeakz_app_SpeechSynthesis_nativeGetParameter(
     JNIEnv *env, jobject object, jint parameter, jint current) {
   if (DEBUG) LOGV("%s(parameter=%d, pitch=%d)", __FUNCTION__, parameter, current);
   return espeak_GetParameter((espeak_PARAMETER)parameter, (int)current);
 }
 
 JNIEXPORT jboolean
-JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeSetPunctuationCharacters(
+JNICALL Java_com_espeakz_app_SpeechSynthesis_nativeSetPunctuationCharacters(
     JNIEnv *env, jobject object, jstring characters) {
   if (DEBUG) LOGV("%s)", __FUNCTION__);
 
@@ -351,7 +411,7 @@ JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeSetPunctuationCharacters
 }
 
 JNIEXPORT jboolean
-JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeSynthesize(
+JNICALL Java_com_espeakz_app_SpeechSynthesis_nativeSynthesize(
     JNIEnv *env, jobject object, jstring text, jboolean isSsml) {
   if (DEBUG) LOGV("%s", __FUNCTION__);
   const char *c_text = text ? (*env)->GetStringUTFChars(env, text, NULL) : NULL;
@@ -359,6 +419,7 @@ JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeSynthesize(
 
   espeak_SetSynthCallback(SynthCallback);
   frames_delivered = 0;
+  bass_reset();
   atomic_store(&stop_requested, 0);
   const espeak_ERROR result = espeak_Synth(c_text, strlen(c_text), 0,  // position
                POS_CHARACTER, 0, // end position (0 means no end position)
@@ -380,7 +441,7 @@ JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeSynthesize(
 }
 
 JNIEXPORT jboolean
-JNICALL Java_com_reecedunn_espeak_SpeechSynthesis_nativeStop(
+JNICALL Java_com_espeakz_app_SpeechSynthesis_nativeStop(
     JNIEnv *env, jobject object) {
   if (DEBUG) LOGV("%s", __FUNCTION__);
   atomic_store(&stop_requested, 1);

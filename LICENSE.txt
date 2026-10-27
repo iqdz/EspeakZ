@@ -1,0 +1,50 @@
+EspeakZ
+Copyright (C) 2026 Harith Alhamdani
+
+EspeakZ is a modified version of eSpeak NG and its Android app.
+
+eSpeak NG
+Copyright (C) 2005 to 2015 Jonathan Duddington
+Copyright (C) 2012 to 2026 Reece H. Dunn and the eSpeak NG contributors
+
+eSpeak NG Android app
+Copyright (C) 2011 Google Inc.
+Copyright (C) 2009, 2011 The Android Open Source Project
+Copyright (C) 2012 to 2026 Reece H. Dunn
+Copyright (C) 2022 Beka Gozalishvili
+Copyright (C) 2026 Alexandr Epaneshnikov
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+The full text is in the file COPYING.
+
+Parts and their licenses
+
+1. The eSpeak NG engine and voice data, in the espeak-ng folder:
+   GNU General Public License version 3 or later, see COPYING.
+2. The Android app sources, in the app folder: Apache License 2.0,
+   see COPYING.APACHE and the header of each file. New app files
+   written for EspeakZ use the same license.
+3. The Sonic library by Bill Cox, downloaded during the build and
+   built into the app: Apache License 2.0.
+4. getopt.c, used only when building the engine for Windows:
+   2-clause BSD license, see COPYING.BSD2.
+5. The Unicode Character Database files used by the engine: the
+   Unicode license, see COPYING.UCD.
+
+The app as built, which combines all of these, is distributed under
+the GNU General Public License version 3 or later. Every copyright
+notice in the source files must be kept.
+
+The changes EspeakZ makes to eSpeak NG, with their dates, are listed
+in README.md.

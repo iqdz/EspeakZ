@@ -9,9 +9,25 @@
     <uses-feature
         android:name="android.hardware.type.watch"
         android:required="false" />
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="false" />
+
+    <!-- Keep EspeakZ running asks Android to leave EspeakZ out of battery
+         saving, so speech is not cut off. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- Dual languages lists the other installed speech engines and reads
+         the second language with one of them. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
 
     <application
-        android:name="com.reecedunn.espeak.EspeakApp"
+        android:name=".EspeakApp"
+        android:banner="@drawable/banner"
         android:icon="@mipmap/icon"
         android:theme="@style/AppTheme"
         android:label="@string/app_name" >
@@ -77,10 +93,20 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".DualLanguageActivity"
+            android:label="@string/dual_title"
+            android:exported="false" />
+        <activity
+            android:name=".AboutActivity"
+            android:label="@string/about_title"
+            android:exported="false" />
+        <!-- The launcher entry, on phones, tablets, TVs and watches alike. It
+             ships enabled and is never switched at run time: disabling a
+             launcher alias closes the activity started through it. -->
         <activity-alias
-            android:name=".WearLauncher"
+            android:name=".Launcher"
             android:targetActivity=".TtsSettingsActivity"
-            android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/icon"
             android:label="@string/tts_settings_label">
@@ -88,6 +114,7 @@
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity-alias>
     </application>
